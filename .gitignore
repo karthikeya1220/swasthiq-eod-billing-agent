@@ -1,0 +1,27 @@
+.DS_Store
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+node_modules/
+dist/
+.env
+backend/data/*.db
+backend/data/*.db-journal
+backend/data/*.db-wal
+backend/data/*.db-shm
+frontend/dist/
+*.log
+
+# Local tooling / scratch (not part of the submission)
+.playwright-mcp/
+analytics_live_check.png
+narrative_live_check.png
+
+# Confidential assignment materials — do not publish
+SwasthiQ SDE Intern Assignment.pdf
+
+# Provided raw dataset lives outside the app; canonical copies are in backend/sample_data/
+Swasthiq Billing Dataset/
