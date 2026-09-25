@@ -1,4 +1,4 @@
-"""LLM provider abstraction. Default: local Ollama (OpenAI-free, no key needed)."""
+"""LLM provider abstraction. Default: OpenRouter (key required) or local Ollama."""
 
 from __future__ import annotations
 
@@ -58,6 +58,65 @@ class OllamaProvider:
 
         if not isinstance(content, str) or not content.strip():
             raise LLMError("Ollama returned an empty response")
+        return content
+
+
+class OpenRouterProvider:
+    """OpenAI-compatible chat completions via OpenRouter (https://openrouter.ai)."""
+
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "google/gemini-2.0-flash-001",
+        base_url: str = "https://openrouter.ai/api/v1",
+        timeout: float = 90.0,
+    ):
+        api_key = (api_key or "").strip()
+        if not api_key:
+            raise ValueError("OpenRouterProvider requires an API key")
+        self.base_url = base_url.rstrip("/")
+        self.model_name = model
+        self.api_key = api_key
+        self.timeout = timeout
+
+    def complete(self, system: str, user: str) -> str:
+        payload = {
+            "model": self.model_name,
+            "temperature": 0.1,
+            "max_tokens": 700,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+        }
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "X-Title": "SwasthiQ EOD Billing",
+        }
+        try:
+            response = httpx.post(
+                f"{self.base_url}/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            detail = exc.response.text[:300]
+            raise LLMError(
+                f"OpenRouter request failed ({exc.response.status_code}): {detail}"
+            ) from exc
+        except httpx.HTTPError as exc:
+            raise LLMError(f"OpenRouter request failed: {exc}") from exc
+
+        try:
+            content = response.json()["choices"][0]["message"]["content"]
+        except (ValueError, KeyError, TypeError, IndexError) as exc:
+            raise LLMError(f"OpenRouter returned an unexpected payload: {exc}") from exc
+
+        if not isinstance(content, str) or not content.strip():
+            raise LLMError("OpenRouter returned an empty response")
         return content
 
 

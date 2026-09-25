@@ -9,7 +9,7 @@ SDE intern take-home assignment: a Python REST API that ingests a clinic's daily
 | Backend | Python 3.12, FastAPI, Pydantic v2, SQLite (stdlib `sqlite3`), ruff |
 | LLM | Local **Ollama** (default `llama3.2:3b`), deterministic fallback when unavailable |
 | Frontend | React 19, Vite, react-router, Recharts, lucide-react, plain CSS |
-| Tests | pytest (85 tests), ESLint, Playwright for visual verification |
+| Tests | pytest (97 tests), ESLint, Playwright for visual verification |
 
 ## Quick start
 
@@ -27,14 +27,25 @@ npm run dev
 # → http://localhost:5174/
 ```
 
-Ollama must be running locally for live narrative generation (`ollama serve`); otherwise the API falls back to a deterministic grounded narrative (`source: "fallback"`).
+Narrative generation uses **OpenRouter** when `OPENROUTER_API_KEY` is set (recommended — any OpenAI-compatible model), else local **Ollama** (`ollama serve`). With neither available, the API falls back to a deterministic grounded narrative (`source: "fallback"`) — the endpoint never fails closed.
+
+Put secrets in `backend/.env` (gitignored, auto-loaded; real environment variables always win):
+
+```
+OPENROUTER_API_KEY=sk-or-...
+OPENROUTER_MODEL=google/gemini-2.0-flash-001
+```
 
 ### Environment variables
 
 | Var | Default | Purpose |
 |---|---|---|
+| `LLM_PROVIDER` | `auto` | `auto` (OpenRouter if a key is set, else Ollama), `openrouter`, or `ollama` |
+| `OPENROUTER_API_KEY` | — | OpenRouter API key (keep in `backend/.env`) |
+| `OPENROUTER_MODEL` | `google/gemini-2.0-flash-001` | Any OpenRouter model slug |
+| `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | OpenAI-compatible endpoint override |
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama endpoint |
-| `OLLAMA_MODEL` | `llama3.2:3b` | Chat model |
+| `OLLAMA_MODEL` | `llama3.2:3b` | Ollama chat model |
 | `LLM_TIMEOUT_SECONDS` | `90` | Per-request timeout |
 | `LLM_MAX_RETRIES` | `1` | Retries on unusable (off-schema/ungrounded) responses |
 | `DATABASE_PATH` | `backend/data/billing.db` | SQLite location |
@@ -173,7 +184,7 @@ Shared date picker (populated from `/billing/days`, badges rejected-row counts),
 
 ```bash
 cd backend
-uv run pytest -q        # 85 passed
+uv run pytest -q        # 97 passed
 uv run ruff check .
 uv run ruff format --check .
 
@@ -201,7 +212,7 @@ The Vite dev server is pinned to **port 5174** (5173 was occupied) with `/api` p
 ```
 backend/
   app/           # config, validation, reconcile, storage, figures, llm, narrative, routes, main
-  tests/         # 85 pytest tests (validation, reconcile, API, narrative/grounding/labels)
+  tests/         # 97 pytest tests (validation, reconcile, API, narrative/grounding/labels)
   sample_data/   # 3 clinic-days + README (canonical copies of the provided dataset)
 frontend/
   src/           # App, pages (Reconciliation, Analytics, Narrative), components, api, format, styles
@@ -210,7 +221,7 @@ screen*.png      # visual verification screenshots (3 main screens + edge-day an
 
 ## Verification (local)
 
-- Backend: `pytest` 85 passed; `ruff check` + `ruff format --check` clean.
+- Backend: `pytest` 97 passed; `ruff check` + `ruff format --check` clean.
 - Frontend: `eslint` 0 errors; `vite build` succeeds (code-split Reconciliation/Analytics/Narrative).
 - API smoke: banana dates → 400; `strict:"false"` coerced; discount > gross → 400; amount_paid > billed → 400 with a field-level overpayment error; missing narrative → 404; narrative generation returns grounded figures with correct billed/collected labels (mislabelled LLM output is retried once, then falls back).
 - UI (Playwright): all three screens match mockups; edge days (25 refunds-only, 26/28 empty) show correct empty states; rapid date-switching settles cleanly; 0 console errors.

@@ -13,6 +13,24 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def _load_env_file(path: Path) -> None:
+    """Minimal .env loader (KEY=VALUE lines, # comments). Real env vars win."""
+    if not path.is_file():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key:
+            os.environ.setdefault(key, value)
+
+
+_load_env_file(BASE_DIR / ".env")
+
+
 def sample_data_dir() -> Path:
     return Path(os.getenv("SAMPLE_DATA_DIR", str(BASE_DIR / "sample_data")))
 
@@ -27,6 +45,23 @@ def ollama_base_url() -> str:
 
 def ollama_model() -> str:
     return os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+
+
+def llm_provider() -> str:
+    """auto (default): OpenRouter when OPENROUTER_API_KEY is set, else Ollama."""
+    return (os.getenv("LLM_PROVIDER", "auto") or "auto").strip().lower()
+
+
+def openrouter_api_key() -> str:
+    return os.getenv("OPENROUTER_API_KEY", "").strip()
+
+
+def openrouter_model() -> str:
+    return os.getenv("OPENROUTER_MODEL", "google/gemini-2.0-flash-001")
+
+
+def openrouter_base_url() -> str:
+    return os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 
 
 def llm_timeout_seconds() -> float:

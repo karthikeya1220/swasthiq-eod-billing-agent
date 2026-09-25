@@ -1,4 +1,4 @@
-"""API tests for /api/narrative/* and unit tests for OllamaProvider."""
+"""API tests for /api/narrative/* and unit tests for the LLM providers."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import json
 import httpx
 import pytest
 
-from app.llm import LLMError, MockProvider, OllamaProvider
+from app.llm import LLMError, MockProvider, OllamaProvider, OpenRouterProvider
 
 GOOD_NARRATIVE = (
     "Good evening! Here's today's summary for Mehta Clinic (27 Jul).\n"
@@ -93,11 +93,19 @@ def test_narrative_context_report_404(seeded_client):
 
 
 class _FakeResponse:
-    def __init__(self, payload):
+    def __init__(self, payload, status_code: int = 200):
         self._payload = payload
+        self.status_code = status_code
+        self.text = json.dumps(payload)
 
     def raise_for_status(self):
-        return None
+        if self.status_code >= 400:
+            request = httpx.Request("POST", "http://openrouter.test/v1/chat/completions")
+            raise httpx.HTTPStatusError(
+                f"Error {self.status_code}",
+                request=request,
+                response=httpx.Response(self.status_code, json=self._payload, request=request),
+            )
 
     def json(self):
         return self._payload
@@ -141,3 +149,121 @@ def test_ollama_provider_empty_content(monkeypatch):
     provider = OllamaProvider()
     with pytest.raises(LLMError, match="empty response"):
         provider.complete("s", "u")
+
+
+# --- OpenRouterProvider ------------------------------------------------------
+
+
+def test_openrouter_provider_success(monkeypatch):
+    monkeypatch.setattr(
+        httpx,
+        "post",
+        lambda *a, **k: _FakeResponse(
+            {"choices": [{"message": {"content": '{"narrative":"hi"}'}}]}
+        ),
+    )
+    provider = OpenRouterProvider(api_key="sk-test", model="test/model")
+    assert provider.complete("system", "user") == '{"narrative":"hi"}'
+    assert provider.model_name == "test/model"
+
+
+def test_openrouter_provider_requires_key():
+    with pytest.raises(ValueError, match="API key"):
+        OpenRouterProvider(api_key="  ")
+
+
+def test_openrouter_provider_sends_auth_header(monkeypatch):
+    seen: dict = {}
+
+    def fake_post(url, **kwargs):
+        seen["url"] = url
+        seen["headers"] = kwargs.get("headers") or {}
+        return _FakeResponse({"choices": [{"message": {"content": "ok"}}]})
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    OpenRouterProvider(api_key="sk-secret", model="m").complete("s", "u")
+    assert seen["url"].endswith("/chat/completions")
+    assert seen["headers"]["Authorization"] == "Bearer sk-secret"
+
+
+def test_openrouter_provider_http_error(monkeypatch):
+    monkeypatch.setattr(
+        httpx,
+        "post",
+        lambda *a, **k: _FakeResponse({"error": {"message": "invalid key"}}, status_code=401),
+    )
+    provider = OpenRouterProvider(api_key="sk-bad")
+    with pytest.raises(LLMError, match="401"):
+        provider.complete("s", "u")
+
+
+def test_openrouter_provider_connection_error(monkeypatch):
+    def _boom(*a, **k):
+        raise httpx.ConnectError("connection refused")
+
+    monkeypatch.setattr(httpx, "post", _boom)
+    with pytest.raises(LLMError, match="OpenRouter request failed"):
+        OpenRouterProvider(api_key="sk-test").complete("s", "u")
+
+
+def test_openrouter_provider_bad_payload(monkeypatch):
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _FakeResponse({"nope": True}))
+    with pytest.raises(LLMError, match="unexpected payload"):
+        OpenRouterProvider(api_key="sk-test").complete("s", "u")
+
+
+def test_openrouter_provider_empty_content(monkeypatch):
+    monkeypatch.setattr(
+        httpx,
+        "post",
+        lambda *a, **k: _FakeResponse({"choices": [{"message": {"content": "  "}}]}),
+    )
+    with pytest.raises(LLMError, match="empty response"):
+        OpenRouterProvider(api_key="sk-test").complete("s", "u")
+
+
+# --- provider selection (build_llm_provider) ---------------------------------
+
+
+def test_provider_auto_uses_openrouter_when_key_set(monkeypatch):
+    from app.main import build_llm_provider
+
+    monkeypatch.setenv("LLM_PROVIDER", "auto")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    provider = build_llm_provider()
+    assert isinstance(provider, OpenRouterProvider)
+
+
+def test_provider_auto_falls_back_to_ollama(monkeypatch):
+    from app.main import build_llm_provider
+
+    monkeypatch.setenv("LLM_PROVIDER", "auto")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    provider = build_llm_provider()
+    assert isinstance(provider, OllamaProvider)
+
+
+def test_provider_openrouter_without_key_fails_fast(monkeypatch):
+    from app.main import build_llm_provider
+
+    monkeypatch.setenv("LLM_PROVIDER", "openrouter")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
+        build_llm_provider()
+
+
+def test_provider_explicit_ollama_wins_over_key(monkeypatch):
+    from app.main import build_llm_provider
+
+    monkeypatch.setenv("LLM_PROVIDER", "ollama")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    provider = build_llm_provider()
+    assert isinstance(provider, OllamaProvider)
+
+
+def test_provider_unknown_kind_rejected(monkeypatch):
+    from app.main import build_llm_provider
+
+    monkeypatch.setenv("LLM_PROVIDER", "nope")
+    with pytest.raises(RuntimeError, match="LLM_PROVIDER"):
+        build_llm_provider()

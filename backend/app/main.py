@@ -15,12 +15,37 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import config
-from .llm import OllamaProvider
+from .llm import OllamaProvider, OpenRouterProvider
 from .routes import router
 from .storage import Storage
 from .validation import validate_payload
 
 log = logging.getLogger("swasthiq.seed")
+
+
+def build_llm_provider():
+    """OpenRouter when LLM_PROVIDER says so (or a key is present in auto mode)."""
+    kind = config.llm_provider()
+    if kind not in ("auto", "openrouter", "ollama"):
+        raise RuntimeError(f"Unknown LLM_PROVIDER {kind!r} — expected auto, openrouter, or ollama")
+    key = config.openrouter_api_key()
+    if kind == "openrouter" or (kind == "auto" and key):
+        if not key:
+            raise RuntimeError(
+                "LLM_PROVIDER=openrouter but OPENROUTER_API_KEY is not set "
+                "(put it in backend/.env or the platform environment)"
+            )
+        return OpenRouterProvider(
+            api_key=key,
+            model=config.openrouter_model(),
+            base_url=config.openrouter_base_url(),
+            timeout=config.llm_timeout_seconds(),
+        )
+    return OllamaProvider(
+        base_url=config.ollama_base_url(),
+        model=config.ollama_model(),
+        timeout=config.llm_timeout_seconds(),
+    )
 
 
 def _seed_sample_data(storage: Storage) -> None:
@@ -67,11 +92,7 @@ async def lifespan(app: FastAPI):
     if config.seed_sample_data() and not storage.list_days():
         _seed_sample_data(storage)
     app.state.storage = storage
-    app.state.llm_provider = OllamaProvider(
-        base_url=config.ollama_base_url(),
-        model=config.ollama_model(),
-        timeout=config.llm_timeout_seconds(),
-    )
+    app.state.llm_provider = build_llm_provider()
     app.state.llm_max_retries = config.llm_max_retries()
     yield
 
