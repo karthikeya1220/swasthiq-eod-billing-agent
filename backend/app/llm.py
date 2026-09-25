@@ -20,6 +20,8 @@ class LLMProvider(Protocol):
 
 
 class OllamaProvider:
+    source_name = "ollama"
+
     def __init__(
         self,
         base_url: str = "http://127.0.0.1:11434",
@@ -64,12 +66,15 @@ class OllamaProvider:
 class OpenRouterProvider:
     """OpenAI-compatible chat completions via OpenRouter (https://openrouter.ai)."""
 
+    source_name = "openrouter"
+
     def __init__(
         self,
         api_key: str,
         model: str = "google/gemini-2.0-flash-001",
         base_url: str = "https://openrouter.ai/api/v1",
         timeout: float = 90.0,
+        max_tokens: int = 400,
     ):
         api_key = (api_key or "").strip()
         if not api_key:
@@ -78,12 +83,13 @@ class OpenRouterProvider:
         self.model_name = model
         self.api_key = api_key
         self.timeout = timeout
+        self.max_tokens = max_tokens
 
     def complete(self, system: str, user: str) -> str:
         payload = {
             "model": self.model_name,
             "temperature": 0.1,
-            "max_tokens": 700,
+            "max_tokens": self.max_tokens,
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
@@ -121,6 +127,9 @@ class OpenRouterProvider:
 
 
 class MockProvider:
+    """Test double: canned content. Stands in for the live Ollama path."""
+
+    source_name = "ollama"
     """Deterministic provider for tests: returns a fixed JSON narrative."""
 
     def __init__(self, response: str | Exception = ""):

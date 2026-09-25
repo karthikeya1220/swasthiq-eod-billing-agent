@@ -72,6 +72,10 @@ def llm_max_retries() -> int:
     return int(os.getenv("LLM_MAX_RETRIES", "1"))
 
 
+def llm_max_tokens() -> int:
+    return int(os.getenv("LLM_MAX_TOKENS", "400"))
+
+
 def seed_sample_data() -> bool:
     return os.getenv("SEED_SAMPLE_DATA", "1") == "1"
 

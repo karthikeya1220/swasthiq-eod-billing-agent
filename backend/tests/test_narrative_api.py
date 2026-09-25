@@ -57,6 +57,26 @@ def test_post_narrative_generates_and_persists(seeded_client):
     assert cached.json()["narrative"] == GOOD_NARRATIVE
 
 
+def test_post_narrative_reports_openrouter_source(seeded_client, monkeypatch):
+    from app.main import app
+
+    app.state.llm_provider = OpenRouterProvider(api_key="sk-test")
+    app.state.llm_max_retries = 1
+    monkeypatch.setattr(
+        httpx,
+        "post",
+        lambda *a, **k: _FakeResponse(
+            {"choices": [{"message": {"content": json.dumps({"narrative": GOOD_NARRATIVE})}}]}
+        ),
+    )
+    resp = seeded_client.post("/api/narrative/2026-07-27")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["source"] == "openrouter"
+    assert body["model"] == "google/gemini-2.0-flash-001"
+    assert body["grounded"] is True
+
+
 def test_post_narrative_404_for_unknown_day(seeded_client):
     resp = seeded_client.post("/api/narrative/2026-01-01")
     assert resp.status_code == 404
@@ -178,12 +198,16 @@ def test_openrouter_provider_sends_auth_header(monkeypatch):
     def fake_post(url, **kwargs):
         seen["url"] = url
         seen["headers"] = kwargs.get("headers") or {}
+        seen["payload"] = kwargs.get("json") or {}
         return _FakeResponse({"choices": [{"message": {"content": "ok"}}]})
 
     monkeypatch.setattr(httpx, "post", fake_post)
-    OpenRouterProvider(api_key="sk-secret", model="m").complete("s", "u")
+    provider = OpenRouterProvider(api_key="sk-secret", model="m", max_tokens=400)
+    provider.complete("s", "u")
     assert seen["url"].endswith("/chat/completions")
     assert seen["headers"]["Authorization"] == "Bearer sk-secret"
+    assert seen["payload"]["max_tokens"] == 400
+    assert seen["payload"]["temperature"] == 0.1
 
 
 def test_openrouter_provider_http_error(monkeypatch):

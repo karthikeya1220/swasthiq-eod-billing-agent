@@ -47,6 +47,7 @@ OPENROUTER_MODEL=google/gemini-2.0-flash-001
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama endpoint |
 | `OLLAMA_MODEL` | `llama3.2:3b` | Ollama chat model |
 | `LLM_TIMEOUT_SECONDS` | `90` | Per-request timeout |
+| `LLM_MAX_TOKENS` | `400` | Output cap for OpenRouter responses (narratives run ~250) |
 | `LLM_MAX_RETRIES` | `1` | Retries on unusable (off-schema/ungrounded) responses |
 | `DATABASE_PATH` | `backend/data/billing.db` | SQLite location |
 | `SEED_SAMPLE_DATA` | `1` | Seed sample days when DB is empty |
@@ -116,7 +117,7 @@ Generates (POST) or returns the cached (GET) WhatsApp-style narrative:
 ```jsonc
 {
   "date", "narrative", "traced_figures": [{figure, report_field, report_field_label}],
-  "model", "source": "ollama"|"fallback", "grounded": bool,
+  "model", "source": "openrouter"|"ollama"|"fallback", "grounded": bool,
   "generated_at", "llm_error": str|null
 }
 ```

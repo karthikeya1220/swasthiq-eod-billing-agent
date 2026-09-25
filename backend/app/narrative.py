@@ -338,7 +338,7 @@ def generate_narrative(
             narrative=narrative,
             traced_figures=[TracedFigure(**t) for t in traced],
             model=getattr(provider, "model_name", "unknown"),
-            source="ollama",
+            source=getattr(provider, "source_name", "ollama"),
             grounded=True,
             generated_at=now,
         )

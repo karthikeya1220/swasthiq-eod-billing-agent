@@ -135,7 +135,7 @@ class NarrativeResponse(BaseModel):
     narrative: str
     traced_figures: list[TracedFigure]
     model: str
-    source: Literal["ollama", "fallback"]
+    source: Literal["openrouter", "ollama", "fallback"]
     grounded: bool
     generated_at: datetime
     llm_error: str | None = None

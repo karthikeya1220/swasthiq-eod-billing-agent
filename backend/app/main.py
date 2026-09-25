@@ -40,6 +40,7 @@ def build_llm_provider():
             model=config.openrouter_model(),
             base_url=config.openrouter_base_url(),
             timeout=config.llm_timeout_seconds(),
+            max_tokens=config.llm_max_tokens(),
         )
     return OllamaProvider(
         base_url=config.ollama_base_url(),
