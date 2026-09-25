@@ -73,7 +73,7 @@ def test_post_narrative_reports_openrouter_source(seeded_client, monkeypatch):
     assert resp.status_code == 200
     body = resp.json()
     assert body["source"] == "openrouter"
-    assert body["model"] == "google/gemini-2.0-flash-001"
+    assert body["model"] == "nex-agi/nex-n2.5-mini:free"
     assert body["grounded"] is True
 
 

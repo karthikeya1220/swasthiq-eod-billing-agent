@@ -57,7 +57,7 @@ def openrouter_api_key() -> str:
 
 
 def openrouter_model() -> str:
-    return os.getenv("OPENROUTER_MODEL", "google/gemini-2.0-flash-001")
+    return os.getenv("OPENROUTER_MODEL", "nex-agi/nex-n2.5-mini:free")
 
 
 def openrouter_base_url() -> str:
@@ -73,7 +73,7 @@ def llm_max_retries() -> int:
 
 
 def llm_max_tokens() -> int:
-    return int(os.getenv("LLM_MAX_TOKENS", "400"))
+    return int(os.getenv("LLM_MAX_TOKENS", "1000"))
 
 
 def seed_sample_data() -> bool:

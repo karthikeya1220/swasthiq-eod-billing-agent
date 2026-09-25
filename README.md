@@ -27,13 +27,13 @@ npm run dev
 # → http://localhost:5174/
 ```
 
-Narrative generation uses **OpenRouter** when `OPENROUTER_API_KEY` is set (recommended — any OpenAI-compatible model), else local **Ollama** (`ollama serve`). With neither available, the API falls back to a deterministic grounded narrative (`source: "fallback"`) — the endpoint never fails closed.
+Narrative generation uses **OpenRouter** when `OPENROUTER_API_KEY` is set (recommended — any OpenAI-compatible model), else local **Ollama** (`ollama serve`). The default model is a **free-tier** slug (no credits needed, 50 requests/day); swap `OPENROUTER_MODEL` for any paid model once you've added credits (e.g. `google/gemini-2.5-flash`). With neither available, the API falls back to a deterministic grounded narrative (`source: "fallback"`) — the endpoint never fails closed.
 
 Put secrets in `backend/.env` (gitignored, auto-loaded; real environment variables always win):
 
 ```
 OPENROUTER_API_KEY=sk-or-...
-OPENROUTER_MODEL=google/gemini-2.0-flash-001
+OPENROUTER_MODEL=nex-agi/nex-n2.5-mini:free
 ```
 
 ### Environment variables
@@ -42,12 +42,12 @@ OPENROUTER_MODEL=google/gemini-2.0-flash-001
 |---|---|---|
 | `LLM_PROVIDER` | `auto` | `auto` (OpenRouter if a key is set, else Ollama), `openrouter`, or `ollama` |
 | `OPENROUTER_API_KEY` | — | OpenRouter API key (keep in `backend/.env`) |
-| `OPENROUTER_MODEL` | `google/gemini-2.0-flash-001` | Any OpenRouter model slug |
+| `OPENROUTER_MODEL` | `nex-agi/nex-n2.5-mini:free` | Any OpenRouter model slug |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | OpenAI-compatible endpoint override |
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama endpoint |
 | `OLLAMA_MODEL` | `llama3.2:3b` | Ollama chat model |
 | `LLM_TIMEOUT_SECONDS` | `90` | Per-request timeout |
-| `LLM_MAX_TOKENS` | `400` | Output cap for OpenRouter responses (narratives run ~250) |
+| `LLM_MAX_TOKENS` | `1000` | Output cap for OpenRouter responses (reasoning models spend ~300 on thinking before the narrative) |
 | `LLM_MAX_RETRIES` | `1` | Retries on unusable (off-schema/ungrounded) responses |
 | `DATABASE_PATH` | `backend/data/billing.db` | SQLite location |
 | `SEED_SAMPLE_DATA` | `1` | Seed sample days when DB is empty |

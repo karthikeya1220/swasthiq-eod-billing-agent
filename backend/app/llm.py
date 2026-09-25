@@ -71,10 +71,10 @@ class OpenRouterProvider:
     def __init__(
         self,
         api_key: str,
-        model: str = "google/gemini-2.0-flash-001",
+        model: str = "nex-agi/nex-n2.5-mini:free",
         base_url: str = "https://openrouter.ai/api/v1",
         timeout: float = 90.0,
-        max_tokens: int = 400,
+        max_tokens: int = 1000,
     ):
         api_key = (api_key or "").strip()
         if not api_key:
