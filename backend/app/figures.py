@@ -53,7 +53,7 @@ def format_pct(pct: int) -> str:
 class FigureRef:
     display: str  # exact token expected in the narrative
     field: str  # dotted path into the report
-    label: str  # human label for the Traced Figures panel
+    label: str  # short snake_case field identifier for the Traced Figures panel
     keywords: tuple[str, ...] = ()
 
 
@@ -75,14 +75,14 @@ def build_figure_index(report: EodReport) -> list[FigureRef]:
     add(
         format_paise(rec.total_billed_paise),
         "reconciliation.total_billed_paise",
-        "total billed",
+        "total_billed",
         "billed",
         "invoice",
     )
     add(
         format_paise(rec.total_collected_paise),
         "reconciliation.total_collected_paise",
-        "total collected",
+        "total_collected",
         "collected",
         "cash",
         "taken",
@@ -107,14 +107,14 @@ def build_figure_index(report: EodReport) -> list[FigureRef]:
     add(
         format_paise(rec.net_collected_paise),
         "reconciliation.net_collected_paise",
-        "net collected",
+        "net_collected",
         "net",
         "after refund",
     )
     add(
         format_paise(rec.total_discount_paise),
         "reconciliation.total_discount_paise",
-        "discounts given",
+        "total_discounts",
         "discount",
     )
 
@@ -122,7 +122,7 @@ def build_figure_index(report: EodReport) -> list[FigureRef]:
         add(
             format_pct(rec.collected_pct_of_billed),
             "reconciliation.collected_pct_of_billed",
-            "% of billed collected",
+            "collected_pct_of_billed",
             "percent",
             "of billed",
             "%",
@@ -133,7 +133,7 @@ def build_figure_index(report: EodReport) -> list[FigureRef]:
     add(
         str(rec.outstanding_visits),
         "reconciliation.outstanding_visits",
-        "visits with outstanding balance",
+        "outstanding_visits",
         "outstanding",
         "pending",
         "owe",
@@ -142,7 +142,7 @@ def build_figure_index(report: EodReport) -> list[FigureRef]:
     add(
         str(rec.refund_visits),
         "reconciliation.refund_visits",
-        "visits with refunds",
+        "refund_visits",
         "refund",
         "refunded",
         "returned",
@@ -153,42 +153,42 @@ def build_figure_index(report: EodReport) -> list[FigureRef]:
         add(
             format_paise(breakdown.billed_paise),
             f"reconciliation.by_mode.{mode}.billed_paise",
-            f"{mode} billed",
+            f"by_mode.{mode}.billed",
             mode,
             "billed",
         )
         add(
             format_paise(breakdown.collected_paise),
             f"reconciliation.by_mode.{mode}.collected_paise",
-            f"{mode} collected",
+            f"by_mode.{mode}.collected",
             mode,
             "collected",
         )
         add(
             format_paise(breakdown.outstanding_paise),
             f"reconciliation.by_mode.{mode}.outstanding_paise",
-            f"{mode} outstanding",
+            f"by_mode.{mode}.outstanding",
             mode,
             "outstanding",
         )
         add(
             format_paise(breakdown.refunded_paise),
             f"reconciliation.by_mode.{mode}.refunded_paise",
-            f"{mode} refunds",
+            f"by_mode.{mode}.refunds",
             mode,
             "refund",
         )
         add(
             str(breakdown.visits),
             f"reconciliation.by_mode.{mode}.visits",
-            f"{mode} visits",
+            f"by_mode.{mode}.visits",
             mode,
             "visit",
         )
         add(
             str(breakdown.outstanding_visits),
             f"reconciliation.by_mode.{mode}.outstanding_visits",
-            f"{mode} pending visits",
+            f"by_mode.{mode}.outstanding_visits",
             mode,
             "pending",
             "outstanding",
@@ -199,18 +199,25 @@ def build_figure_index(report: EodReport) -> list[FigureRef]:
         add(
             an.peak_hour_range,
             "analytics.peak_hour_range",
-            "peak hour for revenue",
+            "revenue_by_hour[max]",
             "peak",
             "busiest",
             "hour",
             "top hour",
         )
-        add(an.peak_hour_label, "analytics.peak_hour_label", "peak hour", "peak", "busiest", "hour")
-        add(str(an.peak_hour), "analytics.peak_hour", "peak hour (24h)", "peak", "busiest", "hour")
+        add(
+            an.peak_hour_label,
+            "analytics.peak_hour_label",
+            "peak_hour_label",
+            "peak",
+            "busiest",
+            "hour",
+        )
+        add(str(an.peak_hour), "analytics.peak_hour", "peak_hour", "peak", "busiest", "hour")
         add(
             format_paise(an.peak_hour_revenue_paise),
             "analytics.peak_hour_revenue_paise",
-            "peak hour revenue",
+            "peak_hour_revenue",
             "peak",
             "busiest",
             "hour",
@@ -222,7 +229,7 @@ def build_figure_index(report: EodReport) -> list[FigureRef]:
         add(
             format_paise(entry.revenue_paise),
             f"analytics.revenue_by_hour[{entry.hour}].revenue_paise",
-            f"revenue at {entry.hour_label}",
+            f"revenue_by_hour[{entry.hour}]",
             entry.hour_label,
             "hour",
             entry.hour_range if hasattr(entry, "hour_range") else hour_range(entry.hour),
@@ -230,14 +237,14 @@ def build_figure_index(report: EodReport) -> list[FigureRef]:
         add(
             entry.hour_label,
             f"analytics.revenue_by_hour[{entry.hour}].hour_label",
-            f"hour {entry.hour_label}",
+            f"revenue_by_hour[{entry.hour}].hour_label",
             "hour",
             entry.hour_label,
         )
         add(
             str(entry.visits),
             f"analytics.revenue_by_hour[{entry.hour}].visits",
-            f"visits at {entry.hour_label}",
+            f"revenue_by_hour[{entry.hour}].visits",
             entry.hour_label,
             "hour",
             "visit",
@@ -249,14 +256,14 @@ def build_figure_index(report: EodReport) -> list[FigureRef]:
         add(
             format_paise(med.revenue_paise),
             f"analytics.top_medicines_by_revenue[{med.rank}].revenue_paise",
-            f"{med.drug_name} revenue",
+            "top.drug.rev",
             med.drug_name.lower(),
             "revenue",
         )
         add(
             str(med.qty),
             f"analytics.top_medicines_by_revenue[{med.rank}].qty",
-            f"{med.drug_name} quantity",
+            "top.drug.qty",
             med.drug_name.lower(),
             "units",
             "quantity",
@@ -265,7 +272,7 @@ def build_figure_index(report: EodReport) -> list[FigureRef]:
         add(
             str(med.qty),
             f"analytics.top_medicines_by_quantity[{med.rank}].qty",
-            f"{med.drug_name} quantity",
+            "top.drug.qty",
             med.drug_name.lower(),
             "units",
             "unit",
@@ -277,7 +284,7 @@ def build_figure_index(report: EodReport) -> list[FigureRef]:
         add(
             format_paise(med.revenue_paise),
             f"analytics.top_medicines_by_quantity[{med.rank}].revenue_paise",
-            f"{med.drug_name} revenue",
+            "top.drug.rev",
             med.drug_name.lower(),
             "revenue",
         )
@@ -287,21 +294,21 @@ def build_figure_index(report: EodReport) -> list[FigureRef]:
     # the rest of the index still builds from reconciliation/analytics/meta.
     try:
         dt = datetime.strptime(meta.date, "%Y-%m-%d")
-        add(str(dt.day), "meta.date", "day of month")
-        add(str(dt.month), "meta.date", "month")
-        add(str(dt.year), "meta.date", "year")
+        add(str(dt.day), "meta.date", "meta.date.day")
+        add(str(dt.month), "meta.date", "meta.date.month")
+        add(str(dt.year), "meta.date", "meta.date.year")
     except ValueError:
         pass
     add(
         str(meta.rows_rejected),
         "meta.rows_rejected",
-        "rows rejected at ingest",
+        "rows_rejected",
         "rejected",
         "malformed",
         "dropped",
         "skipped",
     )
-    add(str(meta.rows_ingested), "meta.rows_ingested", "rows ingested", "row", "ingested", "record")
+    add(str(meta.rows_ingested), "meta.rows_ingested", "rows_ingested", "row", "ingested", "record")
 
     return refs
 
