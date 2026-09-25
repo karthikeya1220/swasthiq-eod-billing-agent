@@ -44,7 +44,7 @@ export default function Analytics({ date, days, setDate }) {
         title="Analytics"
         subtitle={
           ready
-            ? `${report.meta.clinic_subtitle} · ${formatDate(report.meta.date)}`
+            ? `${report.meta.clinic_name} — ${formatDate(report.meta.date)}`
             : "Revenue by hour and medicine rankings"
         }
         date={date}

@@ -9,7 +9,7 @@ SDE intern take-home assignment: a Python REST API that ingests a clinic's daily
 | Backend | Python 3.12, FastAPI, Pydantic v2, SQLite (stdlib `sqlite3`), ruff |
 | LLM | Local **Ollama** (default `llama3.2:3b`), deterministic fallback when unavailable |
 | Frontend | React 19, Vite, react-router, Recharts, lucide-react, plain CSS |
-| Tests | pytest (77 tests), ESLint, Playwright for visual verification |
+| Tests | pytest (85 tests), ESLint, Playwright for visual verification |
 
 ## Quick start
 
@@ -59,6 +59,13 @@ Body: `{ "rows": [...], "date"?: "YYYY-MM-DD", "clinic_id"?: str, "strict"?: boo
 - `date` is resolved from row timestamps when omitted.
 
 Response: `{date, clinic_id, accepted, rejected, strict, errors[], message}`
+
+**Row validation rules** (each produces a field-level error, not a generic 400):
+
+- Required fields: `clinic_id`, `visit_id`, `timestamp`, `doctor_id`, `line_items`, `payment_mode`, `amount_paid_paise`, `discount_paise`, `is_refund`. `doctor_id` is required at ingest for parity with the mockup's row shape, but it is never used in report or narrative outputs.
+- `amount_paid_paise` must be `>= 0` on a sale and negative on a refund.
+- `discount_paise` must be `<= gross line-item total`.
+- `amount_paid_paise` must be `<= billed` (`line items − discount`) on a sale — overpayment is rejected with an actionable error so `outstanding = billed − collected` can never go negative.
 
 ### `GET /billing/days`
 `{days: [{date, clinic_id, rows, rows_rejected, ingested_at}, ...]}` (newest first)
@@ -126,7 +133,7 @@ Deterministic rules (documented in `backend/app/reconcile.py`):
 - **`billed`** = Σ(`qty × unit_price_paise − discount_paise`) over **sale** rows (`is_refund: false`), net of discount — so `outstanding = billed − collected` holds exactly (mock: 42,850 − 38,200 = 4,650).
 - **`collected`** = Σ `amount_paid_paise` on sale rows.
 - **`refunded`** = Σ `|amount_paid_paise|` on refund rows, reported **separately** (not netted into billed/collected).
-- **`outstanding`** = `billed − collected` (per mode and total); `outstanding_visits` = sale visits with a positive remainder.
+- **`outstanding`** = `billed − collected` (per mode and total); `outstanding_visits` = sale visits with a positive remainder. Always ≥ 0: ingest rejects any sale where `amount_paid_paise > billed`.
 - **`collected_pct_of_billed`** = `round(100 × collected / billed)`; `null` when `billed == 0` (empty/refunds-only days).
 - **Hour revenue** = net billed for rows whose UTC timestamp falls in that hour; hour sums to total billed. Peak = hour with max revenue (ties → earliest hour).
 - **Medicine rankings** = gross line totals (`qty × unit_price`, **before** discount), non-refund rows only; top 5 by quantity and, separately, by revenue.
@@ -147,7 +154,7 @@ Re-ingesting a date is an atomic UPSERT — the day is replaced, never appended.
 1. Pre-format a **FACTS sheet** + full report JSON for the model (no free-form number lookup).
 2. Extract numeric tokens from the response; every token must map to a report field (`traced_figures`), else the response is rejected as ungrounded.
 3. **Label ↔ amount check:** a figure that exists in the report but is bound to the wrong word (e.g. `Billed ₹3,172` when billed is ₹3,190 and ₹3,172 is collected) is rejected as mislabelled — as is `99% of billed` written without a nearby `collected`.
-4. Off-schema/ungrounded/mislabelled responses: **1 retry** with corrective feedback, then a **deterministic grounded fallback** (`source: "fallback"`) so the endpoint never fails closed.
+4. Off-schema/ungrounded/mislabelled responses, and sales-day narratives missing a required structure line (busiest hour or either ranking), get **1 retry** with corrective feedback, then a **deterministic grounded fallback** (`source: "fallback"`) so the endpoint never fails closed.
 5. Transport errors (Ollama down/timeout) fall back immediately without retrying.
 
 The UI shows `grounded: true` as "Every figure grounded ✓", the model name, and a `FALLBACK` badge with the LLM note when applicable.
@@ -166,7 +173,7 @@ Shared date picker (populated from `/billing/days`, badges rejected-row counts),
 
 ```bash
 cd backend
-uv run pytest -q        # 77 passed
+uv run pytest -q        # 85 passed
 uv run ruff check .
 uv run ruff format --check .
 
@@ -194,7 +201,7 @@ The Vite dev server is pinned to **port 5174** (5173 was occupied) with `/api` p
 ```
 backend/
   app/           # config, validation, reconcile, storage, figures, llm, narrative, routes, main
-  tests/         # 77 pytest tests (validation, reconcile, API, narrative/grounding/labels)
+  tests/         # 85 pytest tests (validation, reconcile, API, narrative/grounding/labels)
   sample_data/   # 3 clinic-days + README (canonical copies of the provided dataset)
 frontend/
   src/           # App, pages (Reconciliation, Analytics, Narrative), components, api, format, styles
@@ -203,9 +210,9 @@ screen*.png      # visual verification screenshots (3 main screens + edge-day an
 
 ## Verification (local)
 
-- Backend: `pytest` 77 passed; `ruff check` + `ruff format --check` clean.
+- Backend: `pytest` 85 passed; `ruff check` + `ruff format --check` clean.
 - Frontend: `eslint` 0 errors; `vite build` succeeds (code-split Reconciliation/Analytics/Narrative).
-- API smoke: banana dates → 400; `strict:"false"` coerced; discount > gross → 400; missing narrative → 404; narrative generation returns grounded figures with correct billed/collected labels (mislabelled LLM output is retried once, then falls back).
+- API smoke: banana dates → 400; `strict:"false"` coerced; discount > gross → 400; amount_paid > billed → 400 with a field-level overpayment error; missing narrative → 404; narrative generation returns grounded figures with correct billed/collected labels (mislabelled LLM output is retried once, then falls back).
 - UI (Playwright): all three screens match mockups; edge days (25 refunds-only, 26/28 empty) show correct empty states; rapid date-switching settles cleanly; 0 console errors.
 
 > **Re-seed note:** `POST /billing/ingest` with `rows: []` for a date **replaces that day** (atomic UPSERT). To restore sample days after an empty ingest, re-POST the full row set from `backend/sample_data/*.json` for that date.

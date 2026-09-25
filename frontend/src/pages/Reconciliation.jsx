@@ -73,7 +73,7 @@ function ReportBody({ report }) {
         <StatCard
           label="Refunds"
           value={formatPaise(rec.total_refunded_paise)}
-          sublabel={`${rec.refund_visits} refunded`}
+          sublabel={`${rec.refund_visits} ${rec.refund_visits === 1 ? "refund" : "refunds"}`}
           sublabelTone="red"
         />
       </section>

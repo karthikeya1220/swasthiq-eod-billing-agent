@@ -165,6 +165,57 @@ def test_discount_equal_to_gross_allowed():
     assert row is not None
 
 
+def test_overpaid_sale_rejected():
+    # billed = 2 x 2000 = 4000; paying 5000 would make outstanding negative.
+    raw = make_row(amount_paid_paise=5000)
+    row, errors = validate_row(raw, 0)
+    assert row is None
+    assert len(errors) == 1
+    error = errors[0]
+    assert error.field == "amount_paid_paise"
+    assert "billed" in error.error
+    assert "outstanding" in error.error
+    assert "4000" in error.error
+
+
+def test_overpayment_checked_against_discounted_billed():
+    # billed = 5000 - 1000 discount = 4000; 4001 paise is one paise too much.
+    raw = make_row(
+        line_items=[{"drug_name": "X", "qty": 1, "unit_price_paise": 5000}],
+        discount_paise=1000,
+        amount_paid_paise=4001,
+    )
+    row, errors = validate_row(raw, 0)
+    assert row is None
+    assert errors[0].field == "amount_paid_paise"
+    assert "(4000 paise" in errors[0].error
+
+
+def test_exact_billed_amount_allowed():
+    raw = make_row(
+        line_items=[{"drug_name": "X", "qty": 1, "unit_price_paise": 5000}],
+        discount_paise=1000,
+        amount_paid_paise=4000,
+    )
+    row, errors = validate_row(raw, 0)
+    assert errors == []
+    assert row is not None
+
+
+def test_partial_payment_allowed():
+    raw = make_row(amount_paid_paise=2500)
+    row, errors = validate_row(raw, 0)
+    assert errors == []
+    assert row is not None
+
+
+def test_refund_skips_overpayment_check():
+    raw = make_row(is_refund=True, amount_paid_paise=-99999)
+    row, errors = validate_row(raw, 0)
+    assert errors == []
+    assert row is not None
+
+
 def test_bad_date_string_rejected():
     from app.validation import validate_date_string
 

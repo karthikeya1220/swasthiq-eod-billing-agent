@@ -514,6 +514,11 @@ def check_label_bindings(text: str, facts: dict) -> list[str]:
         expected_display = money_facts.get(expected_key)
         if expected_display is None:
             continue
+        # Ambiguous days (e.g. empty day where every money fact is "₹0") map
+        # the token to the first matching fact — if the written value equals
+        # the label's own value, the binding is consistent, not swapped.
+        if expected_display == token.normalized:
+            continue
         errors.append(
             f'figure {token.raw.strip()} is labelled "{best_label}" '
             f"but {best_label} is {expected_display}; relabel it or use {expected_display}"

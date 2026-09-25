@@ -201,6 +201,28 @@ def validate_row(raw: Any, index: int) -> tuple[BillingRow | None, list[RowError
                 visit_id,
             )
 
+    # A sale may never collect more than it bills — overpayment would make
+    # outstanding (billed - collected) negative and corrupt day totals.
+    if (
+        line_items
+        and _is_int(amount)
+        and amount >= 0
+        and _is_int(discount)
+        and discount >= 0
+        and isinstance(is_refund, bool)
+        and not is_refund
+    ):
+        gross = sum(item.qty * item.unit_price_paise for item in line_items)
+        billed = gross - discount
+        if amount > billed:
+            err(
+                "amount_paid_paise",
+                f"must be <= billed total for this visit ({billed} paise "
+                f"= line items - discount); got {amount} — overpayment would "
+                "make outstanding negative",
+                visit_id,
+            )
+
     if errors:
         return None, errors
 

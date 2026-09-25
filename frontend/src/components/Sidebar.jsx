@@ -1,10 +1,26 @@
 import { NavLink } from "react-router-dom";
-import { BarChart3, LayoutDashboard, MessageSquare, Settings } from "lucide-react";
+import {
+  BarChart3,
+  CalendarDays,
+  FileText,
+  LayoutDashboard,
+  MessageSquare,
+  Settings,
+  Users,
+} from "lucide-react";
 
 const navItems = [
   { to: "/reconciliation", icon: LayoutDashboard, label: "EOD Reconciliation" },
   { to: "/analytics", icon: BarChart3, label: "Analytics" },
   { to: "/narrative", icon: MessageSquare, label: "AI Narrative Summary" },
+];
+
+// Decorative placeholders matching the mockup sidebar's icon column —
+// not part of this assignment's routes, so they are non-interactive.
+const staticItems = [
+  { icon: CalendarDays, label: "Appointments" },
+  { icon: Users, label: "Patients" },
+  { icon: FileText, label: "Reports" },
 ];
 
 export default function Sidebar() {
@@ -26,6 +42,16 @@ export default function Sidebar() {
           >
             <Icon size={18} strokeWidth={2} />
           </NavLink>
+        ))}
+        {staticItems.map(({ icon: Icon, label }) => (
+          <span
+            key={label}
+            className="sidebar-item sidebar-item-static"
+            title={label}
+            aria-hidden="true"
+          >
+            <Icon size={18} strokeWidth={2} />
+          </span>
         ))}
       </nav>
       <div className="sidebar-footer">

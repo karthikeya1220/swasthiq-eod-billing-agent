@@ -10,7 +10,7 @@ import pytest
 from app.llm import LLMError, MockProvider, OllamaProvider
 
 GOOD_NARRATIVE = (
-    "Good evening! Here's today's summary for Mehta Clinic (27 Jul 2026).\n"
+    "Good evening! Here's today's summary for Mehta Clinic (27 Jul).\n"
     "₹3,190 billed across 18 visits, ₹3,172 collected (99%).\n"
     "₹18 is still outstanding across 3 visits.\n"
     "Busiest hour: 1pm-2pm, with ₹760 in revenue.\n"

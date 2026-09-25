@@ -33,7 +33,7 @@ def _provider(narrative_text: str) -> MockProvider:
 
 
 GOOD_NARRATIVE = (
-    "Good evening! Here's today's summary for Mehta Clinic (27 Jul 2026).\n"
+    "Good evening! Here's today's summary for Mehta Clinic (27 Jul).\n"
     "₹3,190 billed across 18 visits, ₹3,172 collected (99%).\n"
     "₹18 is still outstanding across 3 visits.\n"
     "Busiest hour: 1pm-2pm, with ₹760 in revenue.\n"
@@ -148,6 +148,18 @@ def test_pct_of_billed_with_collected_nearby_passes(sample_rows):
     assert check_label_bindings(ok, facts) == []
 
 
+def test_zero_valued_label_not_flagged_on_empty_day(sample_rows):
+    # Empty days have "₹0" in several money facts — the token resolves to the
+    # first match, so "billed or collected ₹0" must not read as a swapped label.
+    from app.narrative import build_fact_sheet
+
+    valid, errors, date, _ = validate_payload(sample_rows("2026-07-26"), expected_date="2026-07-26")
+    assert not errors
+    facts = build_fact_sheet(build_report(valid, date))
+    text = "Nothing was billed or collected today — ₹0 moved at all."
+    assert check_label_bindings(text, facts) == []
+
+
 def test_label_error_retries_then_succeeds(sample_rows):
     report = _report_27(sample_rows)
     bad = json.dumps({"narrative": "Billed ₹3,172 (99%) across visits."})
@@ -180,6 +192,41 @@ def test_label_error_exhausts_retries_then_falls_back(sample_rows):
     from app.narrative import build_fact_sheet
 
     assert check_label_bindings(result.narrative, build_fact_sheet(report)) == []
+
+
+def _narrative_without_revenue_line() -> str:
+    return GOOD_NARRATIVE.replace("Top by revenue: ATORVASTATIN (₹1,200).\n", "")
+
+
+def test_missing_ranking_line_retries_then_succeeds(sample_rows):
+    report = _report_27(sample_rows)
+    incomplete = json.dumps({"narrative": _narrative_without_revenue_line()})
+    good = json.dumps({"narrative": GOOD_NARRATIVE})
+    responses = [incomplete, good]
+    calls = {"n": 0}
+
+    def chained(system, user):
+        out = responses[calls["n"]]
+        calls["n"] += 1
+        return out
+
+    provider = MockProvider(incomplete)
+    provider.complete = chained  # type: ignore[method-assign]
+    result = generate_narrative(report, provider, max_retries=1)
+    assert calls["n"] == 2
+    assert result.source == "ollama"
+    assert "Top by revenue" in result.narrative
+
+
+def test_missing_ranking_line_exhausts_retries_then_falls_back(sample_rows):
+    report = _report_27(sample_rows)
+    incomplete = json.dumps({"narrative": _narrative_without_revenue_line()})
+    provider = MockProvider(incomplete)
+    result = generate_narrative(report, provider, max_retries=1)
+    assert result.source == "fallback"
+    assert "missing required lines" in (result.llm_error or "")
+    assert len(provider.calls) == 2
+    assert "ATORVASTATIN" in result.narrative
 
 
 # --- parse -------------------------------------------------------------------

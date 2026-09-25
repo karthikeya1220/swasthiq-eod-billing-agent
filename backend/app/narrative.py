@@ -23,7 +23,8 @@ from .figures import (
 from .llm import LLMError, LLMProvider
 from .schemas import EodReport, NarrativeResponse, TracedFigure
 
-DATE_DISPLAY_FMT = "%d %b %Y"
+# Short display form matching the mockup greeting: "(27 Jul)".
+DATE_DISPLAY_FMT = "%d %b"
 
 SYSTEM_PROMPT = """You are a billing assistant writing an end-of-day summary
 for a clinic owner on WhatsApp.
@@ -44,21 +45,57 @@ RULES:
      next to collected, never next to billed.
    - FACTS["outstanding"] is outstanding; FACTS["refunded"] is refunded.
    Wrong label + right number is a rejected response.
-4. WhatsApp tone: warm, plain language, short lines separated by newlines.
-   No emoji, no markdown symbols.
-5. Structure the message in this order when the relevant facts exist:
-   - Greeting + who/what day
-   - billed across visits, collected (+ pct of billed if present)
-   - outstanding (+ how many visits) and refunds (+ how many visits)
+4. WhatsApp tone: warm, plain language, flowing prose in short paragraphs
+   separated by blank lines. No emoji, no markdown symbols.
+   Never write "Label: value" lines, bullet lists, or "Label — value" lines.
+   Every sentence must read as natural speech, e.g. "₹3,190 billed across
+   18 visits, ₹3,172 collected (99%)." — never "Billed: ₹3,190".
+5. Match the voice and layout of this example. STYLE ONLY — its numbers come
+   from a different day, so never copy them; use FACTS values instead:
+
+   Good evening! Here's today's summary for Mehta Clinic (27 Jul).
+
+   ₹42,850 billed across 18 visits, ₹38,200 collected (89%).
+   ₹4,650 is still outstanding across 3 visits, and ₹600 was refunded on 1 visit.
+
+   Busiest hour: 12pm-1pm, with ₹8,490 in revenue.
+
+   Top mover by quantity: PARACETAMOL (142 units).
+   Top by revenue: ATORVASTATIN (₹6,480).
+
+   Note: cost data wasn't available, so this is revenue, not profit —
+   flagging rather than estimating.
+
+6. Structure the message in this order. Every item whose facts exist is
+   mandatory — never skip one:
+   - Greeting with clinic short name + day, exactly like the example
+   - billed across visits, collected (+ pct of billed if present) — one sentence
+   - outstanding (+ how many visits); add refunds (+ how many visits) to the
+     same sentence, omitting that part when FACTS["refunded"] is "₹0"
    - busiest hour with its revenue
-   - top medicine by quantity (with units)
-   - top medicine by revenue (with amount)
+   - top medicine by quantity (with units) — required when FACTS has "top_by_qty"
+   - top medicine by revenue (with amount) — required when FACTS has
+     "top_by_revenue"; both ranking lines must appear when both facts exist
    - The profit note exactly as given in FACTS["profit_note"]
-6. For empty days (FACTS["has_sales"] is false and visits is "0"), say there
-   were no visits recorded and skip sales lines; still include the profit note.
-7. Never mention paise, never convert units, never mention internal field
-   names or JSON.
-8. Never write bare rank numbers or list positions.
+   Use "visit" only when the count is exactly 1; for any other count
+   (including 0) use "visits".
+7. For empty days (FACTS["has_sales"] is false and visits is "0"), write ONLY:
+   the greeting, one line saying no visits were recorded for the clinic on
+   that day, one line saying nothing was billed or collected, and the profit
+   note. Do not emit "Busiest hour:", "Top mover", "No data available",
+   "₹0 billed", or any colon-led placeholder for a fact that doesn't exist —
+   skip missing structure lines entirely.
+   For refunds-only days (has_sales false but refunded is not "₹0"), the
+   middle lines are: "No sales visits today — {refunded} was refunded on
+   {refund_visits} visits." instead of the billed/collected lines.
+8. If FACTS["refunded"] is "₹0", never mention refunds anywhere in the
+   message — no "₹0 refunded" line, no "0 visits" clause.
+9. Never write a percentage unless FACTS contains "collected_pct" —
+   refunds-only and empty days have no collection percentage, so "100%"
+   would be invented.
+10. Never mention paise, never convert units, never mention internal field
+    names or JSON.
+11. Never write bare rank numbers or list positions.
 """
 
 
@@ -278,6 +315,23 @@ def generate_narrative(
             last_error = "mislabelled figures: " + "; ".join(label_errors)
             feedback = "; ".join(label_errors)
             continue
+
+        # Completeness: a sales day must carry the mockup's key lines —
+        # skipping a ranking line is as much a content miss as a wrong number.
+        if facts.get("has_sales"):
+            missing = [
+                str(facts[key])
+                for key in ("busiest_hour", "top_by_qty", "top_by_revenue")
+                if key in facts and str(facts[key]) not in narrative
+            ]
+            if missing:
+                last_error = "missing required lines: " + ", ".join(missing)
+                feedback = (
+                    "these required figures are missing from the message: "
+                    + ", ".join(missing)
+                    + " — include each of them in its structure line"
+                )
+                continue
 
         return NarrativeResponse(
             date=report.meta.date,

@@ -3,7 +3,6 @@ import { Sparkles } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { api } from "../api.js";
 import { useReport } from "../hooks.js";
-import { formatDate } from "../format.js";
 
 export default function Narrative({ date, days, setDate }) {
   const { report, error: reportError, reload } = useReport(date);
@@ -89,7 +88,7 @@ export default function Narrative({ date, days, setDate }) {
         title="AI Narrative Summary"
         subtitle={
           meta
-            ? `${formatDate(meta.date)} · ${meta.clinic_subtitle}`
+            ? `Generated from today's reconciliation — ${meta.clinic_name}`
             : "Grounded in the deterministic EOD report"
         }
         date={date}
@@ -98,7 +97,7 @@ export default function Narrative({ date, days, setDate }) {
         onRefresh={refresh}
         right={
           <span className="pill pill-purple">
-            <Sparkles size={12} /> AI Generated
+            <Sparkles size={12} /> AI SUGGESTED
           </span>
         }
       />
@@ -116,7 +115,7 @@ export default function Narrative({ date, days, setDate }) {
       <div className="narrative-grid">
         <section className="panel narrative-panel" aria-label="Narrative">
           <div className="chat-bubble">
-            <div className="chat-sender">Mehta Clinic · WhatsApp</div>
+            <div className="chat-sender">Sent to: Dr. Anand Mehta · WhatsApp</div>
             <div className="chat-body" aria-live="polite">
               {narrative ? (
                 narrative.narrative.split("\n").map((line, i) => (
@@ -177,7 +176,7 @@ export default function Narrative({ date, days, setDate }) {
         <section className="panel traced-panel" aria-label="Traced figures">
           <h2 className="panel-title">Traced Figures</h2>
           <p className="panel-subtitle">
-            Every number above maps to the report field it came from.
+            Every number above maps to the deterministic report&apos;s ground truth.
           </p>
           {narrative && narrative.traced_figures.length > 0 ? (
             <ul className="traced-list">
