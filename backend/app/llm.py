@@ -71,7 +71,7 @@ class OpenRouterProvider:
     def __init__(
         self,
         api_key: str,
-        model: str = "nex-agi/nex-n2.5-mini:free",
+        model: str = "nvidia/nemotron-3-super-120b-a12b:free",
         base_url: str = "https://openrouter.ai/api/v1",
         timeout: float = 90.0,
         max_tokens: int = 1000,

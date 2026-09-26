@@ -57,7 +57,7 @@ def openrouter_api_key() -> str:
 
 
 def openrouter_model() -> str:
-    return os.getenv("OPENROUTER_MODEL", "nex-agi/nex-n2.5-mini:free")
+    return os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-super-120b-a12b:free")
 
 
 def openrouter_base_url() -> str:

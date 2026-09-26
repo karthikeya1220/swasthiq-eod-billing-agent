@@ -33,7 +33,7 @@ Put secrets in `backend/.env` (gitignored, auto-loaded; real environment variabl
 
 ```
 OPENROUTER_API_KEY=sk-or-...
-OPENROUTER_MODEL=nex-agi/nex-n2.5-mini:free
+OPENROUTER_MODEL=nvidia/nemotron-3-super-120b-a12b:free
 ```
 
 ### Environment variables
@@ -42,7 +42,7 @@ OPENROUTER_MODEL=nex-agi/nex-n2.5-mini:free
 |---|---|---|
 | `LLM_PROVIDER` | `auto` | `auto` (OpenRouter if a key is set, else Ollama), `openrouter`, or `ollama` |
 | `OPENROUTER_API_KEY` | — | OpenRouter API key (keep in `backend/.env`) |
-| `OPENROUTER_MODEL` | `nex-agi/nex-n2.5-mini:free` | Any OpenRouter model slug |
+| `OPENROUTER_MODEL` | `nvidia/nemotron-3-super-120b-a12b:free` | Any OpenRouter model slug |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | OpenAI-compatible endpoint override |
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama endpoint |
 | `OLLAMA_MODEL` | `llama3.2:3b` | Ollama chat model |
