@@ -1,7 +1,6 @@
 import {
   Bar,
   BarChart,
-  CartesianGrid,
   Cell,
   ResponsiveContainer,
   Tooltip,
@@ -84,17 +83,22 @@ function ReportBody({ report }) {
     an.revenue_by_hour
       .map((h) => `${h.hour_label}: ${formatPaise(h.revenue_paise)}`)
       .join(", ") + (an.peak_hour_range ? `. Peak ${an.peak_hour_range}` : "");
+  const peakIndex = chartData.findIndex((entry) => entry.isPeak);
+  // Absolute x for the peak label: left-aligned with the peak bar's left edge
+  // (as in the mockup), clamped near the right edge so it never overflows.
+  const peakLeft =
+    peakIndex >= 0 && peakIndex < chartData.length - 2
+      ? (() => {
+          const f = (peakIndex + 0.5) / chartData.length;
+          return `calc(${(f * 100).toFixed(2)}% - ${(16 * f + 24).toFixed(1)}px)`;
+        })()
+      : null;
 
   return (
     <>
       <section className="panel chart-panel" aria-label="Revenue by hour of day">
         <div className="chart-header">
           <h2 className="panel-title">Revenue by Hour of Day</h2>
-          {an.peak_hour != null ? (
-            <span className="peak-badge">
-              Peak: {an.peak_hour_range} — {formatPaise(an.peak_hour_revenue_paise)}
-            </span>
-          ) : null}
         </div>
         {chartData.length === 0 ? (
           <p className="muted panel-empty">
@@ -102,14 +106,21 @@ function ReportBody({ report }) {
           </p>
         ) : (
           <div className="chart-body" role="img" aria-label={`Revenue by hour. ${chartSummary}.`}>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="#eef1f6" />
+            {an.peak_hour != null ? (
+              <span
+                className="peak-badge"
+                style={peakLeft ? { left: peakLeft } : { right: 10 }}
+              >
+                Peak: {an.peak_hour_range} — {formatPaise(an.peak_hour_revenue_paise)}
+              </span>
+            ) : null}
+            <ResponsiveContainer width="100%" height={264}>
+              <BarChart data={chartData} margin={{ top: 34, right: 8, left: 8, bottom: 0 }}>
                 <XAxis
                   dataKey="hour"
                   tickLine={false}
-                  axisLine={{ stroke: "#e5e7eb" }}
-                  tick={{ fill: "#6b7280", fontSize: 11 }}
+                  axisLine={false}
+                  tick={{ fill: "#94a3b8", fontSize: 11 }}
                 />
                 <YAxis hide domain={[0, "dataMax"]} />
                 <Tooltip
@@ -120,11 +131,11 @@ function ReportBody({ report }) {
                   labelFormatter={(label) => `Hour: ${label}`}
                   cursor={{ fill: "rgba(37,99,235,0.05)" }}
                 />
-                <Bar dataKey="revenue" radius={[4, 4, 0, 0]} maxBarSize={48}>
+                <Bar dataKey="revenue" radius={[6, 6, 0, 0]} maxBarSize={64}>
                   {chartData.map((entry) => (
                     <Cell
                       key={entry.hour}
-                      fill={entry.isPeak ? "#2563eb" : "#c7d7ff"}
+                      fill={entry.isPeak ? "#2563eb" : "#c6d3f5"}
                     />
                   ))}
                 </Bar>

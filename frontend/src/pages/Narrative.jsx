@@ -176,16 +176,15 @@ export default function Narrative({ date, days, setDate }) {
         <section className="panel traced-panel" aria-label="Traced figures">
           <h2 className="panel-title">Traced Figures</h2>
           <p className="panel-subtitle">
-            Every number above maps to the deterministic report&apos;s ground truth.
+            Every number above maps to the deterministic report — this is what
+            gets auto-checked.
           </p>
           {narrative && narrative.traced_figures.length > 0 ? (
             <ul className="traced-list">
               {narrative.traced_figures.map((figure, i) => (
                 <li key={`${figure.figure}-${figure.report_field}-${i}`}>
                   <span className="traced-figure">{figure.figure}</span>
-                  <span className="traced-field" title={figure.report_field}>
-                    {figure.report_field_label}
-                  </span>
+                  <span className="traced-field">{figure.report_field}</span>
                 </li>
               ))}
             </ul>

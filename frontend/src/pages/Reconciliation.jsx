@@ -62,7 +62,7 @@ function ReportBody({ report }) {
               ? `${rec.collected_pct_of_billed}% of billed`
               : "No sales"
           }
-          sublabelTone="blue"
+          sublabelTone="green"
         />
         <StatCard
           label="Outstanding"
@@ -98,9 +98,7 @@ function ReportBody({ report }) {
                     <td className="mode-name">{MODE_LABELS[mode]}</td>
                     <td>{formatPaise(row.billed_paise)}</td>
                     <td>{formatPaise(row.collected_paise)}</td>
-                    <td className={row.outstanding_paise > 0 ? "text-orange" : ""}>
-                      {formatPaise(row.outstanding_paise)}
-                    </td>
+                    <td>{formatPaise(row.outstanding_paise)}</td>
                   </tr>
                 );
               })}

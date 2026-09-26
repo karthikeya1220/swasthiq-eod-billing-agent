@@ -20,7 +20,6 @@ export default function PageHeader({
         {right}
         {days?.length > 0 ? (
           <label className="date-chip" title="Clinic day">
-            <CalendarDays size={14} />
             <select
               value={date}
               onChange={(e) => setDate?.(e.target.value)}
@@ -33,6 +32,7 @@ export default function PageHeader({
                 </option>
               ))}
             </select>
+            <CalendarDays size={14} />
           </label>
         ) : null}
         {onRefresh ? (
